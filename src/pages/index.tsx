@@ -2,6 +2,7 @@ import { signIn, signOut, useSession } from "next-auth/react";
 import Head from "next/head";
 import Image from "next/image";
 import { CreateTodo } from "~/components/CreateTodo";
+import { Todos } from "~/components/Todos";
 
 export default function Home() {
   const { data: sessionData, status } = useSession();
@@ -34,6 +35,7 @@ export default function Home() {
               </div>
               <div>
                 <CreateTodo />
+                <Todos />
               </div>
             </>
           )}
