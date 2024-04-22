@@ -1,33 +1,109 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { useState } from "react";
 import { type Todo } from "~/server/types";
 import { api } from "~/utils/api";
+import toast from "react-hot-toast";
 
 type TodoProps = {
   todo: Todo
 }
 
 export function Todo({ todo }: TodoProps) {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const { id, text, isCompleted } = todo;
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const [currentTodo, setCurrentTodo] = useState(text);
 
   const trpc = api.useContext();
 
   const { mutate: toggleMutation } = api.todo.toggle.useMutation({
+    onMutate: async ({ id, is_completed }) => {
+      await trpc.todo.all.cancel();
+      const previousTodos = trpc.todo.all.getData();
+      trpc.todo.all.setData(undefined, (prev) => {
+        if (!prev) return previousTodos;
+        return prev.map((t) => {
+          if (t.id === id) {
+            return {
+              ...t,
+              isCompleted: is_completed,
+            };
+          }
+          return t;
+        });
+      });
+      return { previousTodos };
+    },
+    onSuccess: ({ isCompleted }) => {
+      if (isCompleted) {
+        toast.success("Todo completed 🎉");
+      }
+    },
+    onError: (err, is_completed, context) => {
+      toast.error(
+        `An error occured when marking todo as ${
+          is_completed ? "completed" : "uncompleted"
+        }`
+      );
+      console.error(err);
+      if (!context) return;
+      trpc.todo.all.setData(undefined, () => context.previousTodos);
+    },
     onSettled: async () => {
       await trpc.todo.all.invalidate();
     },
   });
 
   const { mutate: deleteMutation } = api.todo.delete.useMutation({
+    onMutate: async (deleteId) => {
+      await trpc.todo.all.cancel();
+      const previousTodos = trpc.todo.all.getData();
+      trpc.todo.all.setData(undefined, (prev) => {
+        if (!prev) return previousTodos;
+        return prev.filter((t) => t.id !== deleteId);
+      });
+      return { previousTodos };
+    },
+    onError: (err, _, context) => {
+      toast.error("An error occurred when deleting todo");
+      console.error(err);
+      if (!context) return;
+      trpc.todo.all.setData(undefined, () => context.previousTodos);
+    },
     onSettled: async () => {
       await trpc.todo.all.invalidate();
     },
   });
 
   const { mutate: updateMutation } = api.todo.update.useMutation({
+    onMutate: async ({ id, text: currentTodo }) => {
+      await trpc.todo.all.cancel();
+      const previousTodos = trpc.todo.all.getData();
+      trpc.todo.all.setData(undefined, (prev) => {
+        if (!prev) return previousTodos;
+        return prev.map((t) => {
+          if (t.id === id) {
+            return {
+              ...t,
+              text: currentTodo,
+            };
+          }
+          return t;
+        });
+      });
+      setCurrentTodo(currentTodo);
+      return { previousTodos };
+    },
+    onError: (err, _, context) => {
+      toast.error("An error occured when editing todo");
+      console.error(err);
+      setCurrentTodo(text);
+      if (!context) return;
+      trpc.todo.all.setData(undefined, () => context.previousTodos);
+    },
     onSettled: async () => {
       await trpc.todo.all.invalidate();
     },
@@ -40,9 +116,7 @@ export function Todo({ todo }: TodoProps) {
           className="h-4 w-4 rounded border border-gray-three bg-cream-four text-green-four focus:border-green-five focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-green-five"
           type="checkbox"
           name="done"
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           id={id}
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           checked={isCompleted}
           onChange={(e) => {
             toggleMutation({ id, is_completed: e.target.checked });

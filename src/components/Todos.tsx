@@ -1,5 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { api } from "~/utils/api";
 import { Todo } from "~/components/Todo";
+import { ProgressBar } from "./ProgressBar";
 
 export function Todos() {
   const { data: todos, isLoading, isError } = api.todo.all.useQuery();
@@ -23,13 +30,14 @@ export function Todos() {
 
   return (
     <>
-      {todos.map((todo) => {
+      {todos!.map((todo) => {
         return (
           <section key={todo.id} className="mt-8 space-y-4">
             <Todo todo={todo} />
           </section>
         );
       })}
+      <ProgressBar todos={todos!} />
     </>
   );
 }
